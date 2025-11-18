@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard — Voting</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>body{background:#001020;color:#dff7ff;font-family:Poppins,Arial;padding:20px} .card{background:#031427;padding:20px;border-radius:10px;max-width:900px;margin:0 auto}</style>
+</head>
+<body>
+  <div class="card">
+    <h2>Dashboard Voting — Bar Chart</h2>
+    <canvas id="chart" height="120"></canvas>
+    <p id="totals"></p>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('chart').getContext('2d')
+    let chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Kandidat A','Kandidat B','Kandidat C'],
+        datasets: [{label:'Total Vote',data:[0,0,0]}]
+      },
+      options: {responsive:true,scales:{y:{beginAtZero:true}}}
+    })
+
+    async function fetchAndUpdate(){
+      const r = await fetch('/api/results')
+      const j = await r.json()
+      chart.data.datasets[0].data = [j.a,j.b,j.c]
+      chart.update()
+      document.getElementById('totals').innerText = `Total: ${j.a + j.b + j.c}`
+    }
+
+    fetchAndUpdate()
+    setInterval(fetchAndUpdate,2000)
+  </script>
+</body>
+</html>

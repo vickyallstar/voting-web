@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Voting — Blue Neon</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#021026;--neon:#00d4ff;--card:#041328}
+    *{box-sizing:border-box;font-family:'Poppins',sans-serif}
+    body{margin:0;background:linear-gradient(180deg,#00102a 0%,#021026 60%);color:#e6f7ff;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .container{width:100%;max-width:980px;padding:28px}
+    .grid{display:grid;grid-template-columns:1fr 420px;gap:24px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);border:1px solid rgba(0,212,255,0.08);padding:20px;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,0.6)}
+    h1{margin:0 0 10px 0;font-size:22px;color:var(--neon);text-shadow:0 0 12px rgba(0,212,255,0.12)}
+    .desc{color:#9fdff9;margin-bottom:18px}
+    .vote-btn{display:block;width:100%;padding:14px;border-radius:10px;margin:10px 0;border:0;background:transparent;color:var(--neon);font-weight:600;cursor:pointer;border:1px solid rgba(0,212,255,0.12)}
+    .vote-btn:hover{transform:translateY(-3px);box-shadow:0 6px 24px rgba(0,212,255,0.06)}
+    input[name="name"]{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#e9fbff}
+    .small{font-size:13px;color:#9fdff9}
+    .right{position:sticky;top:24px}
+    .muted{color:#7fb7cf}
+    .success{color:#b8ffd9}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="grid">
+      <div class="card">
+        <h1>Voting — Pilih Kepala Desa</h1>
+        <p class="desc">Masukkan namamu lalu pilih salah satu kandidat. Setelah voting, admin akan menerima notif di Telegram.</p>
+
+        <form id="voteForm">
+          <label class="small">Nama</label>
+          <input type="text" id="name" placeholder="Masukkan nama" required />
+
+          <p class="small" style="margin-top:12px">Pilih Kandidat</p>
+
+          <button type="button" class="vote-btn" data-cand="A">Kandidat A</button>
+          <button type="button" class="vote-btn" data-cand="B">Kandidat B</button>
+          <button type="button" class="vote-btn" data-cand="C">Kandidat C</button>
+
+          <p id="msg" class="muted" style="margin-top:12px">Belum memilih</p>
+        </form>
+      </div>
+
+      <div class="card right">
+        <h1>Status Voting</h1>
+        <p class="small">Sekilas hasil terakhir (fetch otomatis tiap 3 detik)</p>
+        <div style="margin-top:12px">
+          <div><strong>Total A:</strong> <span id="aCount">0</span></div>
+          <div><strong>Total B:</strong> <span id="bCount">0</span></div>
+          <div><strong>Total C:</strong> <span id="cCount">0</span></div>
+        </div>
+
+        <p style="margin-top:16px" class="muted">Catatan: sistem mencegah vote ganda per IP + per device (localStorage).</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const buttons = document.querySelectorAll('.vote-btn')
+    const msgEl = document.getElementById('msg')
+
+    // Cek localStorage
+    if (localStorage.getItem('hasVoted')) {
+      msgEl.innerText = 'Kamu sudah voting (lokal)'
+      buttons.forEach(b=>b.disabled=true)
+    }
+
+    buttons.forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        if (localStorage.getItem('hasVoted')) return alert('Kamu sudah voting (lokal)')
+
+        const name = document.getElementById('name').value.trim() || 'Anonim'
+        const vote = btn.dataset.cand
+
+        msgEl.innerText = 'Mengirim vote...'
+
+        try{
+          const res = await fetch('/api/vote', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ name, vote })
+          })
+          const data = await res.json()
+
+          if (res.ok) {
+            localStorage.setItem('hasVoted','1')
+            msgEl.innerText = 'Vote terkirim — terima kasih!'
+            buttons.forEach(b=>b.disabled=true)
+            updateCountsFromAPI()
+          } else {
+            alert(data.message || 'Gagal vote')
+            msgEl.innerText = data.message || 'Gagal'
+          }
+        }catch(err){
+          alert('Network error')
+          msgEl.innerText = 'Gagal konek ke server'
+        }
+      })
+    })
+
+    async function updateCountsFromAPI(){
+      try{
+        const r = await fetch('/api/results')
+        const j = await r.json()
+        document.getElementById('aCount').innerText = j.a
+        document.getElementById('bCount').innerText = j.b
+        document.getElementById('cCount').innerText = j.c
+      }catch(e){console.log('err',e)}
+    }
+
+    // polling setiap 3 detik
+    updateCountsFromAPI()
+    setInterval(updateCountsFromAPI,3000)
+  </script>
+</body>
+</html>
