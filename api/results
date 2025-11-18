@@ -1,0 +1,10 @@
+import fs from 'fs'
+import path from 'path'
+
+export default function handler(req, res){
+  const votesPath = path.join(process.cwd(), 'votes.json')
+  let votes = { a:0, b:0, c:0 }
+  if (fs.existsSync(votesPath)) votes = JSON.parse(fs.readFileSync(votesPath,'utf8'))
+  res.setHeader('Cache-Control', 'no-store')
+  res.status(200).json(votes)
+}
